@@ -73,10 +73,19 @@ object PcapExample {
   def run(args: Array[String])(implicit zone: Zone): Unit = {
     val cooked = args.contains("cooked")
     val live = !cooked
+
     val errorBuffer = native.stackalloc[Byte](256)
+
+    val ppDeviceList = native.stackalloc[native.Ptr[pcap.pcap_if]]
+    if (pcap.pcap_findalldevs(ppDeviceList, errorBuffer) != 0) {
+      native.stdio.perror(errorBuffer)
+    }
+    val pDev = !ppDeviceList
+    val deviceName = (!pDev).name
+
     val pcapHandle = if (live) {
       pcap.pcap_open_live(
-        deviceName = toCString("any"),
+        deviceName = deviceName,
         snapLen = Short.MaxValue,
         promisc = 0,
         to_ms = 10,
@@ -84,8 +93,10 @@ object PcapExample {
       )
     } else {
       pcap.pcap_open_offline(fname = toCString(args.last),
-                             errbuf = errorBuffer)
+        errbuf = errorBuffer)
     }
+    pcap.pcap_freealldevs(!ppDeviceList)
+
     if (pcapHandle == null) {
       println(s"Failed to open reader: ${fromCString(errorBuffer)}")
       sys.exit(1)

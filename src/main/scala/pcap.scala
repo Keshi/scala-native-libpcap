@@ -1,12 +1,13 @@
 package com.scalawilliam.scalanative
 
 import scala.scalanative.native
-import scala.scalanative.native.{CInt, CString}
+import scala.scalanative.native._
+import scala.scalanative.runtime.struct
 
 /**
   * @see https://linux.die.net/man/3/pcap
   */
-@native.link("pcap")
+@native.link("wpcap") // Note: if using WinPcap on windows, link against "wpcap", otherwise use "pcap"
 @native.extern
 object pcap {
 
@@ -33,4 +34,16 @@ object pcap {
 
   def pcap_close(p: native.Ptr[Unit]): Unit = native.extern
 
+  @struct class pcap_if {
+    var next: native.Ptr[pcap_if] = _
+    var name: native.Ptr[native.CChar] = _
+    var description: native.Ptr[native.CChar] = _
+    var addresses: native.Ptr[Unit] = _ // This points to a struct that we don't care about.
+    var flags: native.CUnsignedInt = _
+  }
+
+  def pcap_findalldevs(devs_out: Ptr[Ptr[pcap_if]],
+                       errbuf: CString): native.CInt = native.extern
+
+  def pcap_freealldevs(devices: native.Ptr[pcap_if]): Unit = native.extern
 }
